@@ -3,9 +3,9 @@ from pydub import AudioSegment
 from pydub.playback import play
 from tkinter import *
 from tkinter import ttk
-import tkinter as tk
 from datetime import datetime
 
+print("Voice gTTS v1.5 by glebanovsky")
 config = configparser.ConfigParser()
 config.read("./lang/en.ini", encoding="utf-8")
 
@@ -16,25 +16,22 @@ def setting_menu(): #Окно настроек
         
     def themeselected(event): #Темы
         selected = themecombobox.get()
-        if selected == "white":
-            root.config(bg="#e3e3e3")
-            ttk.Style().configure(".", font ="Verdana 16", foreground="black", background="#e3e3e3")
-            textfield.config(bg="white", fg="black")
-        else:
-             root.config(bg="black")
-             ttk.Style().configure(".", font ="Verdana 16", foreground="white", background="black")
-             textfield.config(bg="#080808", fg="white")
-
+        config.read("./theme/"+selected, encoding="utf-8")
+        root.config(bg=config.get("WINDOW", "root"))
+        setting.config(bg=config.get("WINDOW", "setting"))
+        ttk.Style().configure(".", font = config.get("STYLE", "font"), foreground=config.get("STYLE", "fg"), background=config.get("STYLE", "bg"))
+        ttk.Style().configure("sfcheckbutton", font = config.get("STYLE", "font"), foreground=config.get("STYLE", "fg"), background=config.get("STYLE", "bg"))
+        ttk.Style().configure("Base.TCombobox", foreground=config.get("COMBOBOX", "fg"), background=config.get("COMBOBOX", "bg"))
+        textfield.config(bg=config.get("TEXTFIELD", "bg"), fg=config.get("TEXTFIELD", "fg"))
+        playbutton.configure(foreground=config.get("BUTTON", "fg"),background=config.get("BUTTON", "bg"))
+        
     def langselected(event): #Язык
         selected = langcombobox.get()
-        if selected == "Русский":
-            config.read("./lang/ru.ini", encoding="utf-8")
-            
-        else:
-            config.read("./lang/en.ini", encoding="utf-8")
+        config.read("./lang/"+selected, encoding="utf-8")
         themelabel["text"] = config.get("LABEL", "themelabel")
         langlabel["text"] = config.get("LABEL", "langlabel")
         label1["text"] = config.get("LABEL", "label1")
+        sizelabel["text"] = config.get("LABEL", "sizelabel")
         main_menu.entryconfigure(0, label=config.get("MENU", "setting"))
         main_menu.entryconfigure(1, label=config.get("MENU", "window"))
         playbutton.configure(text=config.get("BUTTON", "play"))
@@ -61,9 +58,15 @@ def setting_menu(): #Окно настроек
             playbutton.place(x=930, y=635)
             
       
-    themelist = ["white", "black"]
-    langlist = ["English", "Русский"]
+    themelist = []
+    langlist = []
     sizelist = ["320x240", "800x600", "1024x768"]
+
+    for filename in os.listdir("./lang"):
+        langlist.append(filename)
+        
+    for filename in os.listdir("./theme"):
+        themelist.append(filename)
     
     setting = Toplevel()
     setting.title("Setting")
@@ -75,7 +78,7 @@ def setting_menu(): #Окно настроек
     themelabel = Label(setting, text=config.get("LABEL", "themelabel"))
     themelabel.pack(anchor=NW)
 
-    themecombobox = ttk.Combobox(setting, values=themelist, state="readonly")
+    themecombobox = ttk.Combobox(setting, values=themelist, state="readonly", style="Base.TCombobox")
     themecombobox.pack(anchor=NW)
     themecombobox.current(0)
     themecombobox.bind("<<ComboboxSelected>>", themeselected)
@@ -84,7 +87,7 @@ def setting_menu(): #Окно настроек
     langlabel = Label(setting, text=config.get("LABEL", "langlabel"))
     langlabel.pack(anchor=NW)
 
-    langcombobox = ttk.Combobox(setting, values=langlist, state="readonly")
+    langcombobox = ttk.Combobox(setting, values=langlist, state="readonly", style="Base.TCombobox")
     langcombobox.pack(anchor=NW)
     langcombobox.current(0)
     langcombobox.bind("<<ComboboxSelected>>", langselected)
@@ -93,33 +96,43 @@ def setting_menu(): #Окно настроек
     sizelabel = Label(setting, text=config.get("LABEL", "sizelabel"))
     sizelabel.pack(anchor=NW)
 
-    sizecombobox = ttk.Combobox(setting, values=sizelist, state="readonly")
+    sizecombobox = ttk.Combobox(setting, values=sizelist, state="readonly", style="Base.TCombobox")
     sizecombobox.pack(anchor=NW)
     sizecombobox.current(1)
     sizecombobox.bind("<<ComboboxSelected>>", sizeselected)
-
     
     setting.grab_set()
     
 class app(Tk):
     def play():
         def playaudio():
-            textinput = textfield.get("1.0", "end")
-            date = datetime.now().strftime("%d%m%Y%H%M%S")
-            filename = "saves/voicegtts"+date+".mp3"
-            lang = combobox.get()
-            tts = gtts.gTTS(textinput, lang=lang)
-            tts.save(filename)
-            sound = AudioSegment.from_file(filename, format="mp3")
-            float_value = pitchscale.get()
-            new_value = round(float_value, 1)
-            octaves = new_value
-            new_sample_rate = int(sound.frame_rate * (2.0 ** octaves))
-            audio = sound._spawn(sound.raw_data, overrides={'frame_rate': new_sample_rate})
-            os.remove(filename)
-            play(audio)
+            print("--------------------------------------------------------\nVoice acting has begun")
+            try:
+                textinput = textfield.get("1.0", "end")
+                date = datetime.now().strftime("%d%m%Y%H%M%S")
+                filename = "saves/voicegtts"+date+".mp3"
+                lang = combobox.get()
+                print("Language: "+lang)
+                tts = gtts.gTTS(textinput, lang=lang)
+                tts.save(filename)
+                print("Editing sound with pydub")
+                sound = AudioSegment.from_file(filename, format="mp3")
+                float_value = pitchscale.get()
+                new_value = round(float_value, 1)
+                octaves = new_value
+                print("Pitch: "+str(octaves))
+                new_sample_rate = int(sound.frame_rate * (2.0 ** octaves))
+                audio = sound._spawn(sound.raw_data, overrides={'frame_rate': new_sample_rate})
+                os.remove(filename)
+                print("Audio playback...")
+                play(audio)
+                print("... End \n--------------------------------------------------------")
+            except AssertionError:
+                print("Error: \nThe input field is empty \n--------------------------------------------------------")
             if savefile.get() == 1:
-               audio.export(filename, format="mp3") 
+               audio.export(filename, format="mp3")
+               print("The audio file was successfully saved to the saves folder")
+               print("--------------------------------------------------------")
         thread = threading.Thread(target=playaudio)
         thread.start()
         
@@ -128,7 +141,6 @@ def pitch(value):
     float_value = float(value)
     new_value = round(float_value, 1)
     pitchlabel["text"] = new_value
-
 
 root = Tk()
 root.title("VoiceGTTS")
@@ -144,6 +156,8 @@ root.option_add("*tearOff", FALSE)
 root.config(bg="#e3e3e3")
 ttk.Style().configure(".", font ="Verdana 16", foreground="black", background="#e3e3e3")
 textfield = Text(root, height=13, wrap="word", font="Verdana 22", bg="white", fg="black")
+combobox_style = ttk.Style()
+combobox_style.configure("Base.TCombobox", font = "Verdana 12", foreground="black", background="white")
 
 #Меню
 main_menu = Menu()
@@ -152,7 +166,10 @@ main_menu.add_cascade(label=config.get("MENU", "setting"), command=setting_menu)
 main_menu.add_cascade(label=config.get("MENU", "window"))
 
 #Список языков в combobox
-_langlist = ["ru", "en", "de", "fr", "it", "zh", "ja"]
+config.read("gtts.ini")
+_langlist = config.get("LANG", "langlist")
+_langlist.split(" ")
+
 
 #Текстовое поле
 textfield = Text(root, height=13, wrap="word", font="Verdana 22")
@@ -164,12 +181,12 @@ playbutton.place(x=705, y=460)
 
 #Сохранять?
 savefile = IntVar()
-sfcheckbutton = Checkbutton(font ="Verdana 12",text=config.get("CHECKBUTTON", "savefile"), variable=savefile)
+sfcheckbutton = ttk.Checkbutton(text=config.get("CHECKBUTTON", "savefile"), variable=savefile)
 sfcheckbutton.pack(side=RIGHT)
-sfcheckbutton.select()
+#sfcheckbutton.select()
 
 #Выбор языка
-combobox = ttk.Combobox(root, values=_langlist, state="readonly")
+combobox = ttk.Combobox(root, values=_langlist, state="readonly", style="Base.TCombobox")
 combobox.pack(anchor=NW)
 combobox.current(0)
 
@@ -183,6 +200,7 @@ pitchscale.pack(anchor=NW)
 #Отображения значения питча
 pitchlabel = ttk.Label(root, text="0.0")
 pitchlabel.pack(anchor=W)
+
 
 root.config(menu=main_menu)
 root.mainloop()
